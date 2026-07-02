@@ -1,0 +1,42 @@
+# Identity material for the Pune city shard.
+# Three mutually-distrusting validator organizations, per the DPoA design:
+# the city SPV, the system integrator, and the regulator (CPCB).
+OrdererOrgs:
+  - Name: Orderer
+    Domain: sensorchain.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - localhost
+
+PeerOrgs:
+  - Name: CitySPV
+    Domain: cityspv.sensorchain.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+  - Name: Integrator
+    Domain: integrator.sensorchain.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+
+  - Name: CPCB
+    Domain: cpcb.sensorchain.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1

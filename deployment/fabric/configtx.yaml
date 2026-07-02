@@ -1,0 +1,170 @@
+# Channel configuration for the Pune city shard ("pune" channel).
+# Endorsement: MAJORITY of {CitySPV, Integrator, CPCB} — no single
+# stakeholder can unilaterally write sensor provenance records.
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/sensorchain.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.sensorchain.local:7050
+
+  - &CitySPV
+    Name: CitySPVMSP
+    ID: CitySPVMSP
+    MSPDir: crypto-config/peerOrganizations/cityspv.sensorchain.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CitySPVMSP.admin', 'CitySPVMSP.peer', 'CitySPVMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CitySPVMSP.admin', 'CitySPVMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CitySPVMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CitySPVMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.cityspv.sensorchain.local
+        Port: 7051
+
+  - &Integrator
+    Name: IntegratorMSP
+    ID: IntegratorMSP
+    MSPDir: crypto-config/peerOrganizations/integrator.sensorchain.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('IntegratorMSP.admin', 'IntegratorMSP.peer', 'IntegratorMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('IntegratorMSP.admin', 'IntegratorMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('IntegratorMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('IntegratorMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.integrator.sensorchain.local
+        Port: 8051
+
+  - &CPCB
+    Name: CPCBMSP
+    ID: CPCBMSP
+    MSPDir: crypto-config/peerOrganizations/cpcb.sensorchain.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CPCBMSP.admin', 'CPCBMSP.peer', 'CPCBMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CPCBMSP.admin', 'CPCBMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CPCBMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CPCBMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.cpcb.sensorchain.local
+        Port: 9051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  Addresses:
+    - orderer.sensorchain.local:7050
+  BatchTimeout: 1s
+  BatchSize:
+    MaxMessageCount: 100
+    AbsoluteMaxBytes: 10 MB
+    PreferredMaxBytes: 2 MB
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  PuneShard:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      OrdererType: etcdraft
+      EtcdRaft:
+        Consenters:
+          - Host: orderer.sensorchain.local
+            Port: 7050
+            ClientTLSCert: crypto-config/ordererOrganizations/sensorchain.local/orderers/orderer.sensorchain.local/tls/server.crt
+            ServerTLSCert: crypto-config/ordererOrganizations/sensorchain.local/orderers/orderer.sensorchain.local/tls/server.crt
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CitySPV
+        - *Integrator
+        - *CPCB

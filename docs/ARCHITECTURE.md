@@ -21,6 +21,7 @@
                      │  · DeviceRegistry        │   │ proof checker    │
                      │  · Calibration           │   └──────────────────┘
                      │  · Anchor                │
+                     │  · Firmware              │
                      │  · SLA                   │──events──▶ CPCB / SPV /
                      └────────────┬─────────────┘            integrator
                                   │ shard head hash
@@ -87,8 +88,8 @@ SLA terms live on-chain per vendor. Period metrics — data completeness, longes
 
 | Prototype component | Production counterpart |
 |---|---|
-| `sensorchain.ledger.Ledger` | Hyperledger Fabric channel per city (3 endorsing peers, Raft ordering) |
-| `sensorchain/contracts/*.py` | `chaincode/sensorchain` (TypeScript, fabric-contract-api) — already written and compiling |
+| `sensorchain.ledger.Ledger` | Hyperledger Fabric channel per city (3 endorsing peers, Raft ordering) — **running in `deployment/fabric/`**: CitySPV + Integrator + CPCB orgs, TLS, MAJORITY endorsement, ~118 TPS measured on one host |
+| `sensorchain/contracts/*.py` | `chaincode/sensorchain` (TypeScript, fabric-contract-api) — **deployed via chaincode-as-a-service and exercised end-to-end by `deployment/fabric/app/e2e.js`** |
 | `SoftHSM` | TPM/SE on device, PKCS#11 HSM on gateways |
 | `GatewayAgent` (Python) | static binary (<5 MB) on existing gateways; <2% CPU, <50 MB RAM on RPi 4 |
 | FastAPI audit API | Fabric gateway service + REST facade, per city |
@@ -106,6 +107,10 @@ SLA terms live on-chain per vendor. Period metrics — data completeness, longes
 | Uncalibrated sensor kept in service | on-chain calibration status, auto-flag events, SLA `max_uncalibrated_pct` breach |
 | Vendor edits historical ledger copy | hash-chained blocks + national rollup anchor of shard heads |
 | Replay/duplicate batch | anchor keyed by batch ID; duplicates rejected |
+| Trojaned firmware image pushed to devices | manufacturer signature verified on-chain at publication; devices verify the image hash against the chain before flashing; post-flash attestation mismatch auto-flags the device (`FirmwareHashMismatch`) |
+| Unapproved firmware rolled out early | city-SPV approval gate: `VerifyImage` refuses releases not approved for rollout |
+| Stolen device identity re-keyed by attacker | key rotation must be signed by the current device key (proof of possession); rejected attempts emit `KeyRotationRejected` |
+| Decommissioned device keeps reporting | decommissioning sets retired status, which the anchor contract enforces — anchor rights are revoked on-chain |
 
 ## Privacy & compliance
 

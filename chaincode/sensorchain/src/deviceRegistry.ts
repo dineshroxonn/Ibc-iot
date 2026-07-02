@@ -5,6 +5,7 @@
  * channel; each city shard runs 3 DPoA endorsing peers.
  */
 
+import { createHash, createVerify } from "crypto";
 import { Context, Contract, Info, Returns, Transaction } from "fabric-contract-api";
 
 export interface DeviceRecord {
@@ -22,6 +23,13 @@ export interface DeviceRecord {
   status: string;
   status_reason?: string;
   registered_at: number;
+  key_history?: { key_fingerprint: string; public_key_pem: string; retired_at: number }[];
+  vendor_history?: { vendor: string; until: number }[];
+  decommissioned_at?: number;
+}
+
+export function rotationSigningPayload(deviceId: string, newKeyFingerprint: string): Buffer {
+  return Buffer.from(`rotate|${deviceId}|${newKeyFingerprint}`, "utf8");
 }
 
 const VALID_STATUSES = new Set(["active", "maintenance", "retired", "flagged"]);
@@ -95,6 +103,80 @@ export class DeviceRegistryContract extends Contract {
     await ctx.stub.putState(deviceKey(ctx, deviceId), Buffer.from(JSON.stringify(record)));
     ctx.stub.setEvent("DeviceStatusChanged", Buffer.from(JSON.stringify({
       device_id: deviceId, status, reason,
+    })));
+    return JSON.stringify(record);
+  }
+
+  /**
+   * Rotate the device key. Must be authorized by a signature from the
+   * CURRENT key over `rotate|deviceId|newKeyFingerprint` — proof of
+   * possession. The old key is kept in on-chain history so anchors made
+   * under it remain attributable.
+   */
+  @Transaction()
+  @Returns("string")
+  public async RotateKey(ctx: Context, deviceId: string, newPublicKeyPem: string, signatureHex: string): Promise<string> {
+    const record = JSON.parse(await this.GetDevice(ctx, deviceId)) as DeviceRecord;
+    if (record.status === "retired") {
+      throw new Error(`cannot rotate key of retired device ${deviceId}`);
+    }
+    const newFingerprint = createHash("sha256").update(newPublicKeyPem).digest("hex").slice(0, 16);
+    const verifier = createVerify("SHA256");
+    verifier.update(rotationSigningPayload(deviceId, newFingerprint));
+    if (!verifier.verify(record.public_key_pem, Buffer.from(signatureHex, "hex"))) {
+      ctx.stub.setEvent("KeyRotationRejected", Buffer.from(JSON.stringify({
+        device_id: deviceId, attempted_fingerprint: newFingerprint,
+      })));
+      throw new Error(`key rotation for ${deviceId} rejected: not signed by the current device key`);
+    }
+    const history = record.key_history ?? [];
+    history.push({
+      key_fingerprint: record.key_fingerprint,
+      public_key_pem: record.public_key_pem,
+      retired_at: ctx.stub.getTxTimestamp().seconds.toNumber(),
+    });
+    record.public_key_pem = newPublicKeyPem;
+    record.key_fingerprint = newFingerprint;
+    record.key_history = history;
+    await ctx.stub.putState(deviceKey(ctx, deviceId), Buffer.from(JSON.stringify(record)));
+    ctx.stub.setEvent("DeviceKeyRotated", Buffer.from(JSON.stringify({
+      device_id: deviceId,
+      old_fingerprint: history[history.length - 1].key_fingerprint,
+      new_fingerprint: newFingerprint,
+    })));
+    return JSON.stringify(record);
+  }
+
+  @Transaction()
+  @Returns("string")
+  public async TransferVendor(ctx: Context, deviceId: string, newVendor: string, authorizedBy: string): Promise<string> {
+    const record = JSON.parse(await this.GetDevice(ctx, deviceId)) as DeviceRecord;
+    const history = record.vendor_history ?? [];
+    history.push({ vendor: record.vendor, until: ctx.stub.getTxTimestamp().seconds.toNumber() });
+    const fromVendor = record.vendor;
+    record.vendor = newVendor;
+    record.vendor_history = history;
+    await ctx.stub.putState(deviceKey(ctx, deviceId), Buffer.from(JSON.stringify(record)));
+    ctx.stub.setEvent("DeviceVendorTransferred", Buffer.from(JSON.stringify({
+      device_id: deviceId, from_vendor: fromVendor, to_vendor: newVendor, authorized_by: authorizedBy,
+    })));
+    return JSON.stringify(record);
+  }
+
+  /**
+   * End of life: sets the device to retired, which revokes its anchor
+   * rights (the Anchor contract refuses retired devices). Irreversible.
+   */
+  @Transaction()
+  @Returns("string")
+  public async Decommission(ctx: Context, deviceId: string, reason: string): Promise<string> {
+    const record = JSON.parse(await this.GetDevice(ctx, deviceId)) as DeviceRecord;
+    record.status = "retired";
+    record.status_reason = reason;
+    record.decommissioned_at = ctx.stub.getTxTimestamp().seconds.toNumber();
+    await ctx.stub.putState(deviceKey(ctx, deviceId), Buffer.from(JSON.stringify(record)));
+    ctx.stub.setEvent("DeviceDecommissioned", Buffer.from(JSON.stringify({
+      device_id: deviceId, reason,
     })));
     return JSON.stringify(record);
   }

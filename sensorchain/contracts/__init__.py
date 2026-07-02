@@ -9,11 +9,13 @@ real Hyperledger Fabric network.
 from .anchor import AnchorContract
 from .calibration import CalibrationContract
 from .device_registry import DeviceRegistryContract
+from .firmware import FirmwareContract
 from .sla import SLAContract
 
 __all__ = [
     "AnchorContract",
     "CalibrationContract",
     "DeviceRegistryContract",
+    "FirmwareContract",
     "SLAContract",
 ]

@@ -1,0 +1,14 @@
+{
+  "name": "sensorchain-fabric-app",
+  "version": "0.1.0",
+  "description": "SensorChain client for the Pune shard Fabric network: end-to-end provenance lifecycle demo + throughput benchmark via the Fabric Gateway SDK",
+  "main": "e2e.js",
+  "scripts": {
+    "e2e": "node e2e.js",
+    "bench": "node e2e.js --bench"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0",
+    "@hyperledger/fabric-gateway": "^1.5.0"
+  }
+}

@@ -1,0 +1,140 @@
+# Pune city shard: 1 Raft orderer + 3 endorsing peers (CitySPV,
+# Integrator, CPCB) + the SensorChain chaincode running as a service.
+# TLS everywhere; chaincode deployed via the ccaas external builder
+# that ships in the fabric-peer image.
+networks:
+  sensorchain:
+    name: sensorchain
+    external: true
+
+services:
+  orderer.sensorchain.local:
+    image: hyperledger/fabric-orderer:2.5
+    container_name: orderer.sensorchain.local
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/etc/hyperledger/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/etc/hyperledger/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/etc/hyperledger/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/etc/hyperledger/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+    volumes:
+      - ./crypto-config/ordererOrganizations/sensorchain.local/orderers/orderer.sensorchain.local/msp:/etc/hyperledger/msp
+      - ./crypto-config/ordererOrganizations/sensorchain.local/orderers/orderer.sensorchain.local/tls:/etc/hyperledger/tls
+    ports:
+      - "7050:7050"
+      - "7053:7053"
+    networks:
+      - sensorchain
+
+  peer0.cityspv.sensorchain.local:
+    image: hyperledger/fabric-peer:2.5
+    container_name: peer0.cityspv.sensorchain.local
+    environment: &peer-env
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/tls/ca.crt
+      - CORE_VM_ENDPOINT=
+      - CORE_LEDGER_STATE_STATEDATABASE=goleveldb
+      - CORE_PEER_ID=peer0.cityspv.sensorchain.local
+      - CORE_PEER_ADDRESS=peer0.cityspv.sensorchain.local:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.cityspv.sensorchain.local:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.cityspv.sensorchain.local:7051
+      - CORE_PEER_LOCALMSPID=CitySPVMSP
+      - CORE_PEER_GATEWAY_ENABLED=true
+    volumes:
+      - ./crypto-config/peerOrganizations/cityspv.sensorchain.local/peers/peer0.cityspv.sensorchain.local/msp:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/cityspv.sensorchain.local/peers/peer0.cityspv.sensorchain.local/tls:/etc/hyperledger/tls
+    ports:
+      - "7051:7051"
+    networks:
+      - sensorchain
+
+  peer0.integrator.sensorchain.local:
+    image: hyperledger/fabric-peer:2.5
+    container_name: peer0.integrator.sensorchain.local
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/tls/ca.crt
+      - CORE_VM_ENDPOINT=
+      - CORE_LEDGER_STATE_STATEDATABASE=goleveldb
+      - CORE_PEER_ID=peer0.integrator.sensorchain.local
+      - CORE_PEER_ADDRESS=peer0.integrator.sensorchain.local:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.integrator.sensorchain.local:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.integrator.sensorchain.local:8051
+      - CORE_PEER_LOCALMSPID=IntegratorMSP
+      - CORE_PEER_GATEWAY_ENABLED=true
+    volumes:
+      - ./crypto-config/peerOrganizations/integrator.sensorchain.local/peers/peer0.integrator.sensorchain.local/msp:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/integrator.sensorchain.local/peers/peer0.integrator.sensorchain.local/tls:/etc/hyperledger/tls
+    ports:
+      - "8051:8051"
+    networks:
+      - sensorchain
+
+  peer0.cpcb.sensorchain.local:
+    image: hyperledger/fabric-peer:2.5
+    container_name: peer0.cpcb.sensorchain.local
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/tls/ca.crt
+      - CORE_VM_ENDPOINT=
+      - CORE_LEDGER_STATE_STATEDATABASE=goleveldb
+      - CORE_PEER_ID=peer0.cpcb.sensorchain.local
+      - CORE_PEER_ADDRESS=peer0.cpcb.sensorchain.local:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.cpcb.sensorchain.local:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.cpcb.sensorchain.local:9051
+      - CORE_PEER_LOCALMSPID=CPCBMSP
+      - CORE_PEER_GATEWAY_ENABLED=true
+    volumes:
+      - ./crypto-config/peerOrganizations/cpcb.sensorchain.local/peers/peer0.cpcb.sensorchain.local/msp:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/cpcb.sensorchain.local/peers/peer0.cpcb.sensorchain.local/tls:/etc/hyperledger/tls
+    ports:
+      - "9051:9051"
+    networks:
+      - sensorchain
+
+  # SensorChain chaincode as a service (all four contracts)
+  sensorchain-cc:
+    image: node:18-slim
+    container_name: sensorchain-cc
+    working_dir: /chaincode
+    command: ["npx", "fabric-chaincode-node", "server",
+              "--chaincode-address", "0.0.0.0:9999",
+              "--chaincode-id", "${CHAINCODE_ID:-unset}"]
+    environment:
+      - CORE_CHAINCODE_ID_NAME=${CHAINCODE_ID:-unset}
+    volumes:
+      - ../../chaincode/sensorchain:/chaincode
+    ports:
+      - "9999:9999"
+    networks:
+      - sensorchain
