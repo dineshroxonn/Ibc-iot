@@ -66,6 +66,8 @@ manufacturer signing key registered on-chain → release published only with a v
 | Live oracle on Fabric | 12 sensors self-baselined from MQTT; injected under-reporter caught at **5.5× autoencoder threshold + spatial z=6.1**, injected silence caught; **11 findings anchored on-chain** (Oracle contract, reporting MSP recorded), 0 errors | `edge/oracle_service.py` |
 | Portal on Fabric | citizen portal served entirely from live chain state (devices, calibration, anchors, anomalies, SLA); Merkle verification evaluated **by the chaincode** | `sensorchain/fabric_api.py` |
 | Multi-shard + national rollup | two city channels (pune, ahmedabad) + national channel on the same Fabric network; both shard heads (height + block hash via qscc) anchored cross-channel by the rollup service | `network.sh channel`, `rollup.js` |
+| Stakeholder dashboard | provisioned Grafana reading live chain state: shard height, anchors, anomaly findings, device calibration, SLA breaches, rollup anchors | `deployment/grafana/` |
+| Demo video | ~2.3 min recording of the running system: lifecycle on Fabric, MQTT + oracle fault detection, portal verify/tamper, dashboard | `demo/out/sensorchain-demo.webm` |
 | Data minimisation | 1,085 simulated readings → 30 anchor tx × 32 bytes; raw data never leaves the city platform (DPDP-compatible, no PII on-chain) | `demo.py` |
 
 ## 4. IIoT applicability
@@ -84,12 +86,12 @@ The contracts are domain-neutral; the same deployment serves industrial process 
 
 ## 5. Remaining 6-week PoC plan
 
-Already completed ahead of plan: oracle + portal wired to the live Fabric network (was week 2), and the multi-shard national rollup demonstration (was week 3).
+Already completed ahead of plan: oracle + portal wired to the live Fabric network (was week 2), the multi-shard national rollup demonstration (was week 3), the Grafana stakeholder dashboard, and a first demo video.
 
 | Week | Work |
 |---|---|
 | 1 | Harden Fabric deployment (CA-based identities replacing cryptogen, per-org hosts); connect first physical gateway (Raspberry Pi) via the MQTT path |
-| 2 | Grafana stakeholder dashboard on the chaincode event stream; oracle warning-tier tuning on longer baselines |
+| 2 | Oracle warning-tier tuning on longer baselines; dashboard alerting rules on chaincode events |
 | 3 | Third pilot-city shard; rollup service hardening (per-city reporting identities, endorsement restricted to the rollup MSP) |
 | 4 | Scale test toward the 1,200 TPS/shard budget on dedicated per-org hardware; CouchDB state + block-size tuning |
 | 5 | Pilot-city data integration (CiDaP feed format), CPCB-format compliance exports, security review |

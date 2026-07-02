@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SensorChain Demo</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #1a2130; --text: #e6ebf4; --muted: #8b96ab;
+    --accent: #4da3ff; --ok: #3ecf8e; --bad: #ff6b6b; --warn: #ffb454;
+    --border: #2c3650; --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font: 18px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  .scene { display: none; height: 100vh; padding: 5vh 7vw; flex-direction: column; justify-content: center; }
+  .scene.active { display: flex; }
+  .kicker { color: var(--accent); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: .8rem; }
+  h1 { font-size: 3.4rem; letter-spacing: -0.02em; margin: .3em 0 .2em; }
+  h1 .chain { color: var(--accent); }
+  h2 { font-size: 2rem; margin-bottom: .8rem; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 1.25rem; max-width: 34em; }
+  .footer { position: absolute; bottom: 4vh; left: 7vw; right: 7vw; color: var(--muted);
+    font-size: .85rem; display: flex; justify-content: space-between; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem; }
+  .card b { display: block; margin-bottom: .3rem; font-size: 1.02rem; }
+  .card span { color: var(--muted); font-size: .9rem; }
+  .terminal { background: #0a0e16; border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.1rem 1.3rem; font-family: var(--mono); font-size: .95rem; line-height: 1.55;
+    height: 62vh; overflow: hidden; white-space: pre-wrap; word-break: break-all; }
+  .terminal .t-title { color: var(--muted); border-bottom: 1px solid var(--border);
+    margin: -1.1rem -1.3rem 0.8rem; padding: .5rem 1.3rem; font-size: .8rem; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  .acc { color: var(--accent); } .dim { color: var(--muted); }
+  table.results { border-collapse: collapse; margin-top: 1.2rem; font-size: 1.05rem; }
+  table.results td { padding: .5rem 1.4rem .5rem 0; border-bottom: 1px solid var(--border); }
+  table.results td:first-child { color: var(--muted); }
+  table.results td:last-child { font-weight: 650; }
+  .num { color: var(--ok); font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<section class="scene" id="title">
+  <div class="kicker">Blockchain India Challenge 2026 · PoC · Use Case 10 — IoT/IIoT</div>
+  <h1>Sensor<span class="chain">Chain</span></h1>
+  <p class="sub">Smart City IoT Data Integrity &amp; Provenance Platform — a cryptographically
+  secured chain of custody for sensor data, from silicon to citizen.</p>
+  <div class="footer"><span>Roxonn Future Tech Pvt. Ltd. · DPIIT DIPP230873</span><span>Live system demonstration</span></div>
+</section>
+
+<section class="scene" id="arch">
+  <div class="kicker">Architecture</div>
+  <h2>Everything you'll see is running live on Hyperledger Fabric</h2>
+  <div class="grid">
+    <div class="card"><b>3-org city shard</b><span>City SPV · System Integrator · CPCB — MAJORITY endorsement; no single party can write provenance records.</span></div>
+    <div class="card"><b>7 smart contracts</b><span>Device identity (BIS-enforced) · calibration · Merkle anchoring · firmware chain of trust · SLA auto-breach · anomaly oracle · national rollup.</span></div>
+    <div class="card"><b>Edge → chain custody</b><span>HSM keypair at manufacture → signed 1-minute Merkle anchors, verified on-chain → citizen proof checker in the browser.</span></div>
+    <div class="card"><b>MQTT ingestion</b><span>Real broker transport; edge agent at 0.26% CPU / 29 MiB — measured, on target for Raspberry Pi gateways.</span></div>
+    <div class="card"><b>AI anomaly oracle</b><span>Autoencoder + silence + spatial + cross-modal detection; findings anchored on-chain with the reporting MSP.</span></div>
+    <div class="card"><b>City-cluster sharding</b><span>Independent shard per city; national rollup channel anchors every shard head for cross-city audit.</span></div>
+  </div>
+  <div class="footer"><span>SensorChain</span><span>deployment/fabric · edge/ · chaincode/</span></div>
+</section>
+
+<section class="scene" id="term1">
+  <div class="kicker">Live network · Fabric Gateway SDK</div>
+  <h2>Nine-step provenance lifecycle on the running shard</h2>
+  <div class="terminal"><div class="t-title">$ node e2e.js · channel: pune · org: CitySPVMSP</div><div id="term1-body"></div></div>
+</section>
+
+<section class="scene" id="term2">
+  <div class="kicker">Live ingestion · MQTT → Merkle anchors → AI oracle</div>
+  <h2>Real transport, injected faults, on-chain detection</h2>
+  <div class="terminal"><div class="t-title">$ fleet_emulator --register --inject · mqtt_gateway · oracle_service</div><div id="term2-body"></div></div>
+</section>
+
+<section class="scene" id="results">
+  <div class="kicker">Measured — every number reproducible from the repository</div>
+  <h2>Results</h2>
+  <table class="results">
+    <tr><td>Anchor throughput (3-org endorsement + on-chain ECDSA)</td><td><span class="num">300/300 committed · ~118 TPS</span> on one host</td></tr>
+    <tr><td>City shard requirement (700 gateways, 1-min batches)</td><td>~12 TPS → <span class="num">~10× headroom</span></td></tr>
+    <tr><td>Edge agent footprint (target &lt;2% CPU, &lt;50 MB)</td><td><span class="num">0.26% CPU · 29.3 MiB</span></td></tr>
+    <tr><td>Live MQTT run</td><td><span class="num">1,740 readings · 5 anchors · 0 errors</span></td></tr>
+    <tr><td>Injected pollution under-reporter</td><td>caught at <span class="num">5.5× threshold + spatial z=6.1</span>, anchored on-chain</td></tr>
+    <tr><td>Tests · lifecycle steps on live Fabric</td><td><span class="num">51 passing · 9/9 steps</span></td></tr>
+  </table>
+  <div class="footer"><span>SensorChain · PoC report: docs/POC_REPORT.md</span><span>github.com/dineshroxonn/Ibc-iot</span></div>
+</section>
+
+<section class="scene" id="close">
+  <div class="kicker">Blockchain India Challenge 2026 · Proof of Concept</div>
+  <h1>Sensor<span class="chain">Chain</span></h1>
+  <p class="sub">Trusted IoT data. Automated compliance. Verifiable by every stakeholder —
+  and every citizen.</p>
+  <div class="footer"><span>Roxonn Future Tech Pvt. Ltd. · dineshr@roxonn.com</span><span>Thank you</span></div>
+</section>
+
+<script>
+window.demo = {
+  show(id) {
+    document.querySelectorAll(".scene").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  },
+  async type(targetId, lines, lineDelayMs = 300) {
+    const target = document.getElementById(targetId);
+    for (const line of lines) {
+      const div = document.createElement("div");
+      div.innerHTML = line || "&nbsp;";
+      target.appendChild(div);
+      target.parentElement.scrollTop = target.parentElement.scrollHeight;
+      await new Promise(r => setTimeout(r, lineDelayMs));
+    }
+  },
+};
+</script>
+</body>
+</html>

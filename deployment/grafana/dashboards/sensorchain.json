@@ -1,0 +1,253 @@
+{
+  "uid": "sensorchain",
+  "title": "SensorChain — City Shard Operations",
+  "tags": ["sensorchain", "smart-city", "fabric"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Shard Chain Height",
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/chain/validate",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | project \"detail\""
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" }, "textMode": "value", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "dark-green" } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Anchored Batches (on-chain)",
+      "gridPos": { "h": 5, "w": 4, "x": 5, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/anchors",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | count"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" }, "colorMode": "value" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "unit": "none" }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Registered Devices",
+      "gridPos": { "h": 5, "w": 4, "x": 9, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/devices",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | count"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" }, "colorMode": "value" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Anomaly Findings (on-chain)",
+      "gridPos": { "h": 5, "w": 4, "x": 13, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/anomalies",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | count"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" }, "colorMode": "value" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "SLA Breaches",
+      "gridPos": { "h": 5, "w": 4, "x": 17, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/sla-breaches",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | count"
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/" }, "colorMode": "value" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "AI Oracle — Anomaly Findings (anchored on-chain)",
+      "gridPos": { "h": 10, "w": 13, "x": 0, "y": 5 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://host.docker.internal:8100/api/anomalies",
+        "url_options": { "method": "GET" },
+        "root_selector": "",
+        "columns": [
+          { "selector": "severity", "text": "severity", "type": "string" },
+          { "selector": "kind", "text": "kind", "type": "string" },
+          { "selector": "device_id", "text": "device", "type": "string" },
+          { "selector": "detail", "text": "detail", "type": "string" },
+          { "selector": "reported_by", "text": "reported by", "type": "string" }
+        ]
+      }],
+      "options": { "cellHeight": "sm", "showHeader": true },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "critical": { "color": "dark-red", "index": 0 },
+                  "warning": { "color": "dark-orange", "index": 1 } } }
+              ] },
+              { "id": "custom.width", "value": 90 }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "detail" },
+            "properties": [{ "id": "custom.width", "value": 520 }] }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Device Registry & Calibration (on-chain)",
+      "gridPos": { "h": 10, "w": 11, "x": 13, "y": 5 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://host.docker.internal:8100/api/devices",
+        "url_options": { "method": "GET" },
+        "root_selector": "",
+        "columns": [
+          { "selector": "device_id", "text": "device", "type": "string" },
+          { "selector": "sensor_type", "text": "type", "type": "string" },
+          { "selector": "vendor", "text": "vendor", "type": "string" },
+          { "selector": "status", "text": "status", "type": "string" },
+          { "selector": "calibration.calibrated", "text": "calibrated", "type": "string" }
+        ]
+      }],
+      "options": { "cellHeight": "sm", "showHeader": true },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "calibrated" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "true": { "color": "dark-green", "index": 0 },
+                  "false": { "color": "dark-red", "index": 1 } } }
+              ] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "status" },
+            "properties": [
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "flagged": { "color": "dark-red", "index": 0 },
+                  "retired": { "color": "dark-orange", "index": 1 },
+                  "active": { "color": "dark-green", "index": 2 } } }
+              ] },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Recent Merkle Anchors",
+      "gridPos": { "h": 9, "w": 13, "x": 0, "y": 15 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+        "type": "json", "source": "url", "format": "table", "parser": "uql",
+        "url": "http://host.docker.internal:8100/api/anchors",
+        "url_options": { "method": "GET" },
+        "uql": "parse-json | order by \"window_start\" desc | limit 12 | project \"batch_id\", \"gateway_id\", \"reading_count\", \"merkle_root\""
+      }],
+      "options": { "cellHeight": "sm", "showHeader": true },
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "merkle_root" },
+          "properties": [{ "id": "custom.width", "value": 300 }] }
+      ] }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "National Rollup — Shard Head Anchors (cross-channel)",
+      "gridPos": { "h": 9, "w": 11, "x": 13, "y": 15 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+          "type": "json", "source": "url", "format": "table", "parser": "backend",
+          "url": "http://host.docker.internal:8100/api/rollup/pune",
+          "url_options": { "method": "GET" },
+          "root_selector": "",
+          "columns": [
+            { "selector": "shard_id", "text": "shard", "type": "string" },
+            { "selector": "height", "text": "height", "type": "number" },
+            { "selector": "head_hash", "text": "head hash", "type": "string" },
+            { "selector": "anchored_by", "text": "anchored by", "type": "string" }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "sensorchain-infinity" },
+          "type": "json", "source": "url", "format": "table", "parser": "backend",
+          "url": "http://host.docker.internal:8100/api/rollup/ahmedabad",
+          "url_options": { "method": "GET" },
+          "root_selector": "",
+          "columns": [
+            { "selector": "shard_id", "text": "shard", "type": "string" },
+            { "selector": "height", "text": "height", "type": "number" },
+            { "selector": "head_hash", "text": "head hash", "type": "string" },
+            { "selector": "anchored_by", "text": "anchored by", "type": "string" }
+          ]
+        }
+      ],
+      "transformations": [{ "id": "merge", "options": {} }],
+      "options": { "cellHeight": "sm", "showHeader": true },
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "head hash" },
+          "properties": [{ "id": "custom.width", "value": 320 }] }
+      ] }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+apiVersion: 1
+datasources:
+  - name: SensorChain API
+    type: yesoreyeram-infinity-datasource
+    uid: sensorchain-infinity
+    access: proxy
+    isDefault: true
+    jsonData:
+      allowedHosts:
+        - http://host.docker.internal:8100

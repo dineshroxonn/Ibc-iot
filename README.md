@@ -46,6 +46,23 @@ node deployment/fabric/app/rollup.js --shards pune,ahmedabad --rollup national
 
 In the live run: the oracle self-baselined 12 sensors, caught an injected under-reporting AQI sensor (5.5× autoencoder threshold + spatial divergence) and a sensor going dark, and anchored 11 findings on-chain with the reporting MSP recorded; the portal read devices, anchors, anomalies, and SLA state from the chain with proof verification evaluated **by the chaincode**; and both city shards' head hashes were anchored on the national rollup channel.
 
+Stakeholder dashboard and demo video:
+
+```bash
+docker run -d --name grafana -p 3000:3000 --add-host host.docker.internal:host-gateway \
+  -e GF_AUTH_ANONYMOUS_ENABLED=true -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
+  -e GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource \
+  -v $PWD/deployment/grafana/provisioning:/etc/grafana/provisioning \
+  -v $PWD/deployment/grafana/dashboards:/var/lib/grafana/dashboards grafana/grafana-oss
+# → http://localhost:3000/d/sensorchain  (chain height, anchors, anomalies, calibration, rollup — all live chain state)
+
+node demo/record_demo.js   # records demo/out/sensorchain-demo.webm from the running system
+```
+
+![Grafana operations dashboard reading live chain state](docs/images/grafana_dashboard.png)
+
+The ~2.3-minute demo video ([demo/out/sensorchain-demo.webm](demo/out/sensorchain-demo.webm)) walks through the live system: the 9-step lifecycle on Fabric, MQTT ingestion with injected faults and on-chain oracle detection, citizen portal verification with a tamper attempt, and the operations dashboard.
+
 `demo.py` runs the entire lifecycle on a simulated Pune shard: 9 devices across 3 vendors are registered with BIS certificates and HSM keypairs, calibrated (one deliberately skipped and auto-flagged), then 30 minutes of AQI / water-quality / traffic readings are batched and Merkle-anchored per minute. Injected faults — a pollution under-reporting sensor, a dead traffic counter under severe AQI, a water sensor going dark — are caught by the anomaly oracle, SLA breaches fire automatically with penalties, and a tampered dashboard value is shown failing its Merkle proof.
 
 ## The six modules
