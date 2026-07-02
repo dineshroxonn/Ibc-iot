@@ -34,6 +34,18 @@ python3 edge/mqtt_gateway.py                   # windows, signs, anchors; prints
 
 Measured on this pipeline: 60 sensors, 1,740 readings, 5 anchored batches, 0 errors — at **0.26% CPU and 29.3 MiB peak RSS** on the edge agent (target from the proposal: <2% CPU, <50 MB). Full evidence and the 6-week plan are in [docs/POC_REPORT.md](docs/POC_REPORT.md), including the IIoT mapping of every contract (machine identity, QC calibration records, PLC update governance, supplier SLAs).
 
+Live AI oracle + Fabric-backed portal, and multi-shard rollup:
+
+```bash
+python3 edge/oracle_service.py                 # detects on live MQTT, anchors findings on-chain (Oracle contract)
+uvicorn sensorchain.fabric_api:app --port 8100 # same citizen portal, every record from the live chain
+./deployment/fabric/network.sh channel ahmedabad   # second city shard
+./deployment/fabric/network.sh channel national    # national rollup channel
+node deployment/fabric/app/rollup.js --shards pune,ahmedabad --rollup national
+```
+
+In the live run: the oracle self-baselined 12 sensors, caught an injected under-reporting AQI sensor (5.5× autoencoder threshold + spatial divergence) and a sensor going dark, and anchored 11 findings on-chain with the reporting MSP recorded; the portal read devices, anchors, anomalies, and SLA state from the chain with proof verification evaluated **by the chaincode**; and both city shards' head hashes were anchored on the national rollup channel.
+
 `demo.py` runs the entire lifecycle on a simulated Pune shard: 9 devices across 3 vendors are registered with BIS certificates and HSM keypairs, calibrated (one deliberately skipped and auto-flagged), then 30 minutes of AQI / water-quality / traffic readings are batched and Merkle-anchored per minute. Injected faults — a pollution under-reporting sensor, a dead traffic counter under severe AQI, a water sensor going dark — are caught by the anomaly oracle, SLA breaches fire automatically with penalties, and a tampered dashboard value is shown failing its Merkle proof.
 
 ## The six modules

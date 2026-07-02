@@ -72,9 +72,16 @@ class AnomalyOracle:
     # Setup
     # ------------------------------------------------------------------
     def load_registry(self) -> None:
-        """Group devices into co-location sites by rounded GPS cell."""
+        """Group devices into co-location sites from the prototype ledger."""
+        self.load_devices([device for _, device in self.ledger.query_by_prefix("device~")])
+
+    def load_devices(self, devices: list[dict]) -> None:
+        """Group device records into co-location sites by rounded GPS cell.
+
+        Accepts records from any registry source — the prototype ledger
+        or the Fabric bridge's /devices endpoint (same schema)."""
         self._sites.clear()
-        for _, device in self.ledger.query_by_prefix("device~"):
+        for device in devices:
             site = f"{round(device['latitude'], 3)}:{round(device['longitude'], 3)}"
             self._sites[site][device["sensor_type"]].append(device["device_id"])
 

@@ -11,9 +11,18 @@
  * produced on the edge device's HSM and verified ON-CHAIN — the bridge
  * is untrusted plumbing: it cannot forge anchors.
  *
- *   POST /register  {record}                      → DeviceRegistry:RegisterDevice
- *   POST /anchor    {gateway_id, batch_id, ...}   → Anchor:AnchorBatch
+ *   POST /register    {record}                    → DeviceRegistry:RegisterDevice
+ *   POST /calibrate   {device_id, lab...}         → Calibration:AnchorCertificate
+ *   POST /anchor      {gateway_id, batch_id, ...} → Anchor:AnchorBatch
+ *   POST /anomaly     {kind, device_id, ...}      → Oracle:ReportAnomaly
+ *   POST /verify      {batch_id, leaf_hash, path} → Anchor:VerifyReading
+ *   GET  /devices                                 → DeviceRegistry:ListDevices (+calibration)
+ *   GET  /device/<id>                             → DeviceRegistry:GetDevice (+calibration)
+ *   GET  /anchors                                 → Anchor:ListAnchors
  *   GET  /anchor/<batchId>                        → Anchor:GetAnchor
+ *   GET  /anomalies                               → Oracle:ListAnomalies
+ *   GET  /sla-breaches                            → SLA:Breaches
+ *   GET  /chain                                   → qscc GetChainInfo (height + head hash)
  *   GET  /health
  */
 
@@ -27,7 +36,7 @@ const grpc = require("@grpc/grpc-js");
 const { connect, signers } = require("@hyperledger/fabric-gateway");
 
 const PORT = parseInt(process.env.BRIDGE_PORT || "8801", 10);
-const CHANNEL = "pune";
+const CHANNEL = process.env.CHANNEL || "pune";
 const CHAINCODE = "sensorchain";
 const MSP_ID = "CitySPVMSP";
 const PEER_ENDPOINT = process.env.PEER_ENDPOINT || "localhost:7051";
@@ -59,7 +68,18 @@ function newGateway() {
 }
 
 const { gateway } = newGateway();
-const contract = gateway.getNetwork(CHANNEL).getContract(CHAINCODE);
+const network = gateway.getNetwork(CHANNEL);
+const contract = network.getContract(CHAINCODE);
+const qscc = network.getContract("qscc");
+
+const evalJson = async (name, args = []) =>
+  JSON.parse(utf8.decode(await contract.evaluate(name, { arguments: args })));
+
+async function withCalibration(device) {
+  const calibration = await evalJson("Calibration:CalibrationStatus", [device.device_id]);
+  const { public_key_pem, ...compact } = device;
+  return { ...compact, calibration };
+}
 
 const readBody = (req) => new Promise((resolve, reject) => {
   let data = "";
@@ -96,6 +116,68 @@ const server = http.createServer(async (req, res) => {
       const batchId = decodeURIComponent(req.url.slice("/anchor/".length));
       const result = await contract.evaluate("Anchor:GetAnchor", { arguments: [batchId] });
       return send(200, JSON.parse(utf8.decode(result)));
+    }
+    if (req.method === "POST" && req.url === "/calibrate") {
+      const c = JSON.parse(await readBody(req));
+      const result = await contract.submit("Calibration:AnchorCertificate", {
+        arguments: [c.device_id, c.lab_id, c.lab_accreditation, c.result,
+          JSON.stringify(c.parameters || {})],
+      });
+      return send(200, JSON.parse(utf8.decode(result)));
+    }
+    if (req.method === "POST" && req.url === "/anomaly") {
+      const anomaly = await readBody(req);
+      const result = await contract.submit("Oracle:ReportAnomaly", { arguments: [anomaly] });
+      return send(200, JSON.parse(utf8.decode(result)));
+    }
+    if (req.method === "POST" && req.url === "/verify") {
+      const v = JSON.parse(await readBody(req));
+      const result = await contract.evaluate("Anchor:VerifyReading", {
+        arguments: [v.batch_id, v.leaf_hash, JSON.stringify(v.path)],
+      });
+      return send(200, JSON.parse(utf8.decode(result)));
+    }
+    if (req.method === "GET" && req.url.startsWith("/device/")) {
+      const deviceId = decodeURIComponent(req.url.slice("/device/".length));
+      const device = await evalJson("DeviceRegistry:GetDevice", [deviceId]);
+      return send(200, await withCalibration(device));
+    }
+    if (req.method === "GET" && (req.url === "/devices" || req.url.startsWith("/devices?"))) {
+      const vendor = new URL(req.url, "http://x").searchParams.get("vendor") || "";
+      const devices = await evalJson("DeviceRegistry:ListDevices", [vendor]);
+      return send(200, await Promise.all(devices.map(withCalibration)));
+    }
+    if (req.method === "GET" && (req.url === "/anchors" || req.url.startsWith("/anchors?"))) {
+      const gatewayId = new URL(req.url, "http://x").searchParams.get("gateway_id") || "";
+      return send(200, await evalJson("Anchor:ListAnchors", [gatewayId]));
+    }
+    if (req.method === "GET" && req.url === "/anomalies") {
+      return send(200, await evalJson("Oracle:ListAnomalies"));
+    }
+    if (req.method === "GET" && (req.url === "/sla-breaches" || req.url.startsWith("/sla-breaches?"))) {
+      const vendor = new URL(req.url, "http://x").searchParams.get("vendor") || "";
+      return send(200, await evalJson("SLA:Breaches", [vendor]));
+    }
+    if (req.method === "GET" && (req.url === "/shard-anchors" || req.url.startsWith("/shard-anchors?"))) {
+      const shard = new URL(req.url, "http://x").searchParams.get("shard") || "";
+      return send(200, await evalJson("Rollup:ShardAnchors", [shard]));
+    }
+    if (req.method === "POST" && req.url === "/rollup-anchor") {
+      const r = JSON.parse(await readBody(req));
+      const result = await contract.submit("Rollup:AnchorShardHead", {
+        arguments: [r.shard_id, String(r.height), r.head_hash],
+      });
+      return send(200, JSON.parse(utf8.decode(result)));
+    }
+    if (req.method === "GET" && req.url === "/chain") {
+      const { common } = require("@hyperledger/fabric-protos");
+      const bytes = await qscc.evaluate("GetChainInfo", { arguments: [CHANNEL] });
+      const info = common.BlockchainInfo.deserializeBinary(bytes);
+      return send(200, {
+        channel: CHANNEL,
+        height: Number(info.getHeight()),
+        head_hash: Buffer.from(info.getCurrentblockhash_asU8()).toString("hex"),
+      });
     }
     send(404, { error: "unknown endpoint" });
   } catch (err) {

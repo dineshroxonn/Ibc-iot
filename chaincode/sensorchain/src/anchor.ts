@@ -97,6 +97,21 @@ export class AnchorContract extends Contract {
 
   @Transaction(false)
   @Returns("string")
+  public async ListAnchors(ctx: Context, gatewayId: string): Promise<string> {
+    const iterator = ctx.stub.getStateByPartialCompositeKey("anchor", []);
+    const anchors: BatchAnchor[] = [];
+    for await (const kv of iterator) {
+      const anchor = JSON.parse(kv.value.toString()) as BatchAnchor;
+      if (!gatewayId || anchor.gateway_id === gatewayId) {
+        anchors.push(anchor);
+      }
+    }
+    anchors.sort((a, b) => a.window_start - b.window_start);
+    return JSON.stringify(anchors);
+  }
+
+  @Transaction(false)
+  @Returns("string")
   public async GetAnchor(ctx: Context, batchId: string): Promise<string> {
     const data = await ctx.stub.getState(this.key(ctx, batchId));
     if (data.length === 0) {

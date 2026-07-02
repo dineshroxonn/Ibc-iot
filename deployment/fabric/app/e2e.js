@@ -27,7 +27,7 @@ const path = require("node:path");
 const grpc = require("@grpc/grpc-js");
 const { connect, signers } = require("@hyperledger/fabric-gateway");
 
-const CHANNEL = "pune";
+const CHANNEL = process.env.CHANNEL || "pune";
 const CHAINCODE = "sensorchain";
 const MSP_ID = "CitySPVMSP";
 const PEER_ENDPOINT = process.env.PEER_ENDPOINT || "localhost:7051";

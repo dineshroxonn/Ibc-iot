@@ -129,6 +129,58 @@ EOF
     peer lifecycle chaincode querycommitted --channelID "$CHANNEL" --name "$CC_NAME"
 }
 
+cmd_channel() {
+  # Create an additional channel (a new city shard, or the national
+  # rollup channel) and deploy the already-installed chaincode to it.
+  local name="$1"
+  [ -n "$name" ] || { echo "usage: $0 channel <name>"; exit 1; }
+
+  echo ">> generating genesis block for channel '$name'"
+  tools -e FABRIC_CFG_PATH=/work "$TOOLS_IMG" \
+    configtxgen -profile PuneShard -outputBlock "channel-artifacts/${name}.block" -channelID "$name"
+
+  echo ">> joining orderer to '$name'"
+  tools "$TOOLS_IMG" osnadmin channel join \
+    --channelID "$name" --config-block "channel-artifacts/${name}.block" \
+    -o orderer.sensorchain.local:7053 \
+    --ca-file "/work/$ORDERER_CA" \
+    --client-cert "/work/$ORDERER_ADMIN_CERT" \
+    --client-key "/work/$ORDERER_ADMIN_KEY"
+
+  for entry in "${ORGS[@]}"; do
+    IFS="|" read -r org msp host port <<<"$entry"
+    echo ">> joining $host to '$name'"
+    as_org "$org" "$msp" "$host" "$port" \
+      peer channel join -b "channel-artifacts/${name}.block"
+  done
+
+  if [ -f "ccpackage/${CC_NAME}.tar.gz" ]; then
+    PACKAGE_ID=$(tools "$TOOLS_IMG" peer lifecycle chaincode calculatepackageid "ccpackage/${CC_NAME}.tar.gz")
+    for entry in "${ORGS[@]}"; do
+      IFS="|" read -r org msp host port <<<"$entry"
+      echo ">> approving '$CC_NAME' on '$name' for $msp"
+      as_org "$org" "$msp" "$host" "$port" \
+        peer lifecycle chaincode approveformyorg \
+        -o orderer.sensorchain.local:7050 --tls --cafile "/work/$ORDERER_CA" \
+        --channelID "$name" --name "$CC_NAME" --version "$CC_VERSION" \
+        --sequence "$CC_SEQUENCE" --package-id "$PACKAGE_ID"
+    done
+    echo ">> committing '$CC_NAME' on '$name'"
+    IFS="|" read -r org msp host port <<<"${ORGS[0]}"
+    as_org "$org" "$msp" "$host" "$port" \
+      peer lifecycle chaincode commit \
+      -o orderer.sensorchain.local:7050 --tls --cafile "/work/$ORDERER_CA" \
+      --channelID "$name" --name "$CC_NAME" --version "$CC_VERSION" --sequence "$CC_SEQUENCE" \
+      --peerAddresses peer0.cityspv.sensorchain.local:7051 \
+      --tlsRootCertFiles /work/crypto-config/peerOrganizations/cityspv.sensorchain.local/peers/peer0.cityspv.sensorchain.local/tls/ca.crt \
+      --peerAddresses peer0.integrator.sensorchain.local:8051 \
+      --tlsRootCertFiles /work/crypto-config/peerOrganizations/integrator.sensorchain.local/peers/peer0.integrator.sensorchain.local/tls/ca.crt \
+      --peerAddresses peer0.cpcb.sensorchain.local:9051 \
+      --tlsRootCertFiles /work/crypto-config/peerOrganizations/cpcb.sensorchain.local/peers/peer0.cpcb.sensorchain.local/tls/ca.crt
+  fi
+  echo ">> channel '$name' ready"
+}
+
 cmd_down() {
   docker compose down -v --remove-orphans || true
   rm -rf crypto-config channel-artifacts ccpackage
@@ -138,6 +190,7 @@ cmd_down() {
 case "${1:-}" in
   up) cmd_up ;;
   deploy) cmd_deploy ;;
+  channel) cmd_channel "${2:-}" ;;
   down) cmd_down ;;
-  *) echo "usage: $0 {up|deploy|down}"; exit 1 ;;
+  *) echo "usage: $0 {up|deploy|channel <name>|down}"; exit 1 ;;
 esac

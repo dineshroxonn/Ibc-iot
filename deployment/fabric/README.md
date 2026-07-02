@@ -25,10 +25,18 @@ cd ../../chaincode/sensorchain && npm install && npm run build
 ## Bring up + deploy
 
 ```bash
-./network.sh up        # identities, genesis block, orderer + 3 peers, channel "pune"
-./network.sh deploy    # package (ccaas) → install ×3 → approve ×3 → commit
-./network.sh down      # stop and wipe generated material
+./network.sh up                 # identities, genesis block, orderer + 3 peers, channel "pune"
+./network.sh deploy             # package (ccaas) → install ×3 → approve ×3 → commit
+./network.sh channel ahmedabad  # add a second city shard (new channel + chaincode)
+./network.sh channel national   # add the national rollup channel
+./network.sh down               # stop and wipe generated material
 ```
+
+## Services (`app/`)
+
+- `e2e.js` — 9-step lifecycle demo + `--bench` throughput benchmark (set `CHANNEL=` to target any shard)
+- `bridge.js` — localhost HTTP → Fabric Gateway bridge used by the edge agent, the live oracle, and the Fabric-backed portal API (`BRIDGE_PORT=`, `CHANNEL=`)
+- `rollup.js` — national rollup service: reads each shard's height + head block hash via qscc and anchors them on the national channel (`--shards pune,ahmedabad --rollup national`)
 
 ## End-to-end lifecycle demo + benchmark
 

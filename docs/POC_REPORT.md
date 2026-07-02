@@ -62,7 +62,10 @@ manufacturer signing key registered on-chain → release published only with a v
 | MQTT ingestion run | 60 sensors, 1,740 readings, 5 batches anchored to the live network, **0 errors** | `edge/` |
 | Edge agent footprint | **0.26% of one core, 29.3 MiB peak RSS** (target: <2% CPU, <50 MB) | measured by the agent itself |
 | Off-chain/on-chain consistency | stored MQTT batch root == on-chain root; 360-reading batch proof = 9 hashes | verified post-run |
-| Unit/integration tests | **51 passing** (Merkle, all 5 contracts, oracle, gateway, firmware, lifecycle, API) | `tests/` |
+| Unit/integration tests | **51 passing** (Merkle, all contracts, oracle, gateway, firmware, lifecycle, API) | `tests/` |
+| Live oracle on Fabric | 12 sensors self-baselined from MQTT; injected under-reporter caught at **5.5× autoencoder threshold + spatial z=6.1**, injected silence caught; **11 findings anchored on-chain** (Oracle contract, reporting MSP recorded), 0 errors | `edge/oracle_service.py` |
+| Portal on Fabric | citizen portal served entirely from live chain state (devices, calibration, anchors, anomalies, SLA); Merkle verification evaluated **by the chaincode** | `sensorchain/fabric_api.py` |
+| Multi-shard + national rollup | two city channels (pune, ahmedabad) + national channel on the same Fabric network; both shard heads (height + block hash via qscc) anchored cross-channel by the rollup service | `network.sh channel`, `rollup.js` |
 | Data minimisation | 1,085 simulated readings → 30 anchor tx × 32 bytes; raw data never leaves the city platform (DPDP-compatible, no PII on-chain) | `demo.py` |
 
 ## 4. IIoT applicability
@@ -81,11 +84,13 @@ The contracts are domain-neutral; the same deployment serves industrial process 
 
 ## 5. Remaining 6-week PoC plan
 
+Already completed ahead of plan: oracle + portal wired to the live Fabric network (was week 2), and the multi-shard national rollup demonstration (was week 3).
+
 | Week | Work |
 |---|---|
 | 1 | Harden Fabric deployment (CA-based identities replacing cryptogen, per-org hosts); connect first physical gateway (Raspberry Pi) via the MQTT path |
-| 2 | Wire the anomaly oracle + portal to the Fabric event stream (today they run on the prototype shard); Grafana stakeholder dashboard |
-| 3 | Multi-shard demonstration: second city channel + national rollup channel anchoring both shard heads |
+| 2 | Grafana stakeholder dashboard on the chaincode event stream; oracle warning-tier tuning on longer baselines |
+| 3 | Third pilot-city shard; rollup service hardening (per-city reporting identities, endorsement restricted to the rollup MSP) |
 | 4 | Scale test toward the 1,200 TPS/shard budget on dedicated per-org hardware; CouchDB state + block-size tuning |
 | 5 | Pilot-city data integration (CiDaP feed format), CPCB-format compliance exports, security review |
 | 6 | Evaluation: demo video, final benchmarks, PoC report for C-DAC, stakeholder walkthrough |
