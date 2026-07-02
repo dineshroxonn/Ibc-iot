@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SensorChain — Citizen Verification Portal</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #1a2130; --panel2: #212a3d; --text: #e6ebf4;
+    --muted: #8b96ab; --accent: #4da3ff; --ok: #3ecf8e; --bad: #ff6b6b;
+    --warn: #ffb454; --border: #2c3650; --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 2rem 1rem 4rem; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  header { margin-bottom: 2rem; }
+  h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
+  h1 .chain { color: var(--accent); }
+  header p { color: var(--muted); max-width: 62ch; margin-top: .4rem; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+  .card h2 { font-size: 1.05rem; margin-bottom: .75rem; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: end; }
+  label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .25rem; }
+  input, textarea, select {
+    width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: .5rem .65rem; font-family: var(--mono); font-size: .82rem;
+  }
+  textarea { min-height: 7.5rem; resize: vertical; }
+  .field { flex: 1 1 220px; }
+  button {
+    background: var(--accent); color: #06101f; font-weight: 600; border: 0; border-radius: 8px;
+    padding: .55rem 1.1rem; font-size: .9rem; cursor: pointer;
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button:hover { filter: brightness(1.1); }
+  .result { margin-top: 1rem; padding: .9rem 1.1rem; border-radius: 8px; font-family: var(--mono); font-size: .82rem; white-space: pre-wrap; word-break: break-all; display: none; }
+  .result.ok { display: block; background: rgba(62,207,142,.1); border: 1px solid var(--ok); }
+  .result.bad { display: block; background: rgba(255,107,107,.1); border: 1px solid var(--bad); }
+  .result.info { display: block; background: rgba(77,163,255,.08); border: 1px solid var(--border); }
+  .steps { color: var(--muted); font-size: .85rem; margin: .5rem 0 1rem; padding-left: 1.1rem; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+  code { font-family: var(--mono); background: var(--panel2); padding: .1em .35em; border-radius: 4px; font-size: .85em; }
+  .badge { display: inline-block; padding: .1em .55em; border-radius: 99px; font-size: .72rem; font-weight: 600; }
+  .badge.ok { background: rgba(62,207,142,.15); color: var(--ok); }
+  .badge.bad { background: rgba(255,107,107,.15); color: var(--bad); }
+  .badge.warn { background: rgba(255,180,84,.15); color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  .tablewrap { overflow-x: auto; }
+  footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 2.5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sensor<span class="chain">Chain</span> — Citizen Verification Portal</h1>
+    <p>Independently verify that a published smart-city sensor reading matches what was
+    cryptographically anchored on-chain at measurement time. Verification runs entirely in
+    your browser — no trust in the vendor dashboard required.</p>
+  </header>
+
+  <div class="card">
+    <h2>1 · Fetch a reading &amp; proof</h2>
+    <ol class="steps">
+      <li>Pick an anchored batch and a reading index (the city platform serves these).</li>
+      <li>The Merkle proof and on-chain root are loaded for local verification.</li>
+    </ol>
+    <div class="row">
+      <div class="field"><label>Batch ID</label><input id="batchId" placeholder="gw-pune-01-batch-000001"></div>
+      <div class="field" style="flex:0 1 140px"><label>Reading index</label><input id="readingIndex" type="number" value="0" min="0"></div>
+      <div><button id="fetchBtn">Fetch proof</button></div>
+      <div><button class="secondary" id="listBtn">List anchors</button></div>
+    </div>
+    <div id="anchorsOut" class="result info"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Verify locally (WebCrypto SHA-256)</h2>
+    <div class="row">
+      <div class="field"><label>Reading (canonical JSON)</label><textarea id="reading"></textarea></div>
+      <div class="field"><label>Merkle proof (leaf hash + path)</label><textarea id="proof"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:.75rem">
+      <div class="field"><label>On-chain Merkle root (from the anchor transaction)</label><input id="root"></div>
+      <div><button id="verifyBtn">Verify reading</button></div>
+    </div>
+    <div id="verifyOut" class="result"></div>
+    <p class="hint">Leaf = SHA-256(<code>0x00</code> ‖ canonical JSON) · node = SHA-256(<code>0x01</code> ‖ left ‖ right).
+    Edit any field of the reading and re-verify to see tampering detected.</p>
+  </div>
+
+  <div class="card">
+    <h2>Live city status</h2>
+    <div class="row" style="margin-bottom:.75rem">
+      <button class="secondary" id="devicesBtn">Devices &amp; calibration</button>
+      <button class="secondary" id="anomBtn">Anomaly alerts</button>
+      <button class="secondary" id="slaBtn">SLA breaches</button>
+      <button class="secondary" id="chainBtn">Chain integrity</button>
+    </div>
+    <div class="tablewrap" id="statusOut"></div>
+  </div>
+
+  <footer>SensorChain · Blockchain India Challenge 2026 · Roxonn Future Tech Pvt. Ltd.</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const api = path => fetch(path).then(r => { if (!r.ok) throw new Error(r.status + " " + r.statusText); return r.json(); });
+
+// ---------- canonical JSON (matches Python json.dumps sort_keys, compact) ----
+function canonicalJSON(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + value.map(canonicalJSON).join(",") + "]";
+  return "{" + Object.keys(value).sort().map(k => JSON.stringify(k) + ":" + canonicalJSON(value[k])).join(",") + "}";
+}
+const enc = new TextEncoder();
+const toHex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+const fromHex = hex => new Uint8Array(hex.match(/../g).map(h => parseInt(h, 16)));
+async function sha256(bytes) { return toHex(await crypto.subtle.digest("SHA-256", bytes)); }
+function concatBytes(...arrays) {
+  const out = new Uint8Array(arrays.reduce((n, a) => n + a.length, 0));
+  let off = 0; for (const a of arrays) { out.set(a, off); off += a.length; }
+  return out;
+}
+async function hashLeaf(reading) {
+  return sha256(concatBytes(new Uint8Array([0]), enc.encode(canonicalJSON(reading))));
+}
+async function hashPair(left, right) {
+  return sha256(concatBytes(new Uint8Array([1]), fromHex(left), fromHex(right)));
+}
+
+// ---------- verification --------------------------------------------------
+$("verifyBtn").onclick = async () => {
+  const out = $("verifyOut");
+  out.className = "result info"; out.textContent = "verifying…";
+  try {
+    const reading = JSON.parse($("reading").value);
+    const proof = JSON.parse($("proof").value);
+    const expectedRoot = $("root").value.trim();
+    const leaf = await hashLeaf(reading);
+    const leafOk = leaf === proof.leaf_hash;
+    let node = leaf;
+    for (const [sibling, side] of proof.path)
+      node = side === "left" ? await hashPair(sibling, node) : await hashPair(node, sibling);
+    const rootOk = node === expectedRoot;
+    if (leafOk && rootOk) {
+      out.className = "result ok";
+      out.textContent = "✔ VERIFIED — this exact reading was anchored on-chain.\n\ncomputed root  " + node + "\non-chain root  " + expectedRoot;
+    } else {
+      out.className = "result bad";
+      out.textContent = (leafOk
+        ? "✘ NOT VERIFIED — proof path does not reach the on-chain root.\n"
+        : "✘ NOT VERIFIED — the reading does not hash to the proof's leaf (reading was altered).\n")
+        + "\ncomputed leaf  " + leaf + "\nproof leaf     " + proof.leaf_hash
+        + "\ncomputed root  " + node + "\non-chain root  " + expectedRoot;
+    }
+  } catch (e) {
+    out.className = "result bad"; out.textContent = "error: " + e.message;
+  }
+};
+
+// ---------- data loading ----------------------------------------------------
+$("fetchBtn").onclick = async () => {
+  const out = $("anchorsOut");
+  try {
+    const pkg = await api(`/api/proofs/${encodeURIComponent($("batchId").value.trim())}/${$("readingIndex").value}`);
+    $("reading").value = JSON.stringify(pkg.reading, null, 2);
+    $("proof").value = JSON.stringify(pkg.proof, null, 2);
+    $("root").value = pkg.merkle_root;
+    out.className = "result info";
+    out.textContent = `loaded reading #${pkg.reading_index} of ${pkg.batch_id} — now verify locally below`;
+  } catch (e) { out.className = "result bad"; out.textContent = "error: " + e.message; }
+};
+
+$("listBtn").onclick = async () => {
+  const out = $("anchorsOut");
+  try {
+    const anchors = await api("/api/anchors");
+    out.className = "result info";
+    out.textContent = anchors.slice(0, 8).map(a =>
+      `${a.batch_id}  readings=${a.reading_count}  root=${a.merkle_root.slice(0, 16)}…`).join("\n")
+      + (anchors.length > 8 ? `\n… ${anchors.length - 8} more` : "");
+    if (anchors.length && !$("batchId").value) $("batchId").value = anchors[0].batch_id;
+  } catch (e) { out.className = "result bad"; out.textContent = "error: " + e.message; }
+};
+
+// ---------- status tables ----------------------------------------------------
+function table(headers, rows) {
+  return `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+$("devicesBtn").onclick = async () => {
+  const devices = await api("/api/devices");
+  $("statusOut").innerHTML = table(
+    ["Device", "Type", "Vendor", "BIS cert", "Status", "Calibration"],
+    devices.map(d => [d.device_id, d.sensor_type, d.vendor, d.bis_certificate, d.status,
+      d.calibration.calibrated ? '<span class="badge ok">calibrated</span>'
+                               : `<span class="badge bad">${d.calibration.reason}</span>`]));
+};
+$("anomBtn").onclick = async () => {
+  const anomalies = await api("/api/anomalies");
+  $("statusOut").innerHTML = anomalies.length ? table(
+    ["Kind", "Severity", "Device", "Detail"],
+    anomalies.map(a => [a.kind,
+      `<span class="badge ${a.severity === "critical" ? "bad" : "warn"}">${a.severity}</span>`,
+      a.device_id, a.detail])) : "<p class='hint'>no anomalies recorded</p>";
+};
+$("slaBtn").onclick = async () => {
+  const breaches = await api("/api/sla-breaches");
+  $("statusOut").innerHTML = breaches.length ? table(
+    ["Vendor", "Period", "Violations", "Penalty (INR)"],
+    breaches.map(b => [b.vendor, b.period,
+      b.violations.map(v => `${v.term}: required ${v.required}, observed ${v.observed}`).join("<br>"),
+      b.penalty_inr.toLocaleString("en-IN")])) : "<p class='hint'>no SLA breaches</p>";
+};
+$("chainBtn").onclick = async () => {
+  const v = await api("/api/chain/validate");
+  $("statusOut").innerHTML =
+    `<p>${v.valid ? '<span class="badge ok">chain valid</span>' : '<span class="badge bad">chain INVALID</span>'} ` +
+    `— ${v.detail} · shard <code>${v.shard_id}</code> · head <code>${v.head_hash.slice(0, 24)}…</code></p>`;
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "sensorchain-chaincode",
+  "version": "0.1.0",
+  "description": "SensorChain Hyperledger Fabric chaincode: device identity, calibration anchoring, Merkle-root batch anchoring, vendor SLA enforcement",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "fabric-chaincode-node start"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.4",
+    "fabric-shim": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "typescript": "^5.4.0"
+  }
+}

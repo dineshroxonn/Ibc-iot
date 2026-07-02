@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# chaincode build artifacts
+chaincode/sensorchain/node_modules/
+chaincode/sensorchain/dist/
