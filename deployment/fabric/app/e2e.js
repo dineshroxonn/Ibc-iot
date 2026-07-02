@@ -220,31 +220,32 @@ async function main() {
     }
 
     // -- 7. secure firmware upgrade chain of trust --------------------------------
+    const fwModel = `AQ-Sense-${runId}`;
     step(7, "firmware: manufacturer-signed release → approval → device attestation");
     const maker = makeHsm();
     const manufacturer = `Bosch-${runId}`;
     const fwImage = Buffer.from("sensor firmware v2.1.0 \x7fELF...");
     const fwHash = sha256(fwImage);
     await contract.submit("Firmware:RegisterManufacturer", { arguments: [manufacturer, maker.publicPem] });
-    const fwSig = maker.sign(Buffer.from(`firmware|${manufacturer}|AQ-Sense-3|2.1.0|${fwHash}`, "utf8"));
+    const fwSig = maker.sign(Buffer.from(`firmware|${manufacturer}|${fwModel}|2.1.0|${fwHash}`, "utf8"));
     await contract.submit("Firmware:PublishFirmware", {
-      arguments: [manufacturer, "AQ-Sense-3", "2.1.0", fwHash, fwSig],
+      arguments: [manufacturer, fwModel, "2.1.0", fwHash, fwSig],
     });
     const preApproval = JSON.parse(utf8.decode(await contract.evaluate("Firmware:VerifyImage", {
-      arguments: ["AQ-Sense-3", "2.1.0", fwHash],
+      arguments: [fwModel, "2.1.0", fwHash],
     })));
     console.log(`    before approval     : device refuses image (${preApproval.reason})`);
-    await contract.submit("Firmware:ApproveFirmware", { arguments: ["AQ-Sense-3", "2.1.0", "PuneSPV"] });
+    await contract.submit("Firmware:ApproveFirmware", { arguments: [fwModel, "2.1.0", "PuneSPV"] });
     const postApproval = JSON.parse(utf8.decode(await contract.evaluate("Firmware:VerifyImage", {
-      arguments: ["AQ-Sense-3", "2.1.0", fwHash],
+      arguments: [fwModel, "2.1.0", fwHash],
     })));
     console.log(`    after approval      : image verified=${postApproval.ok}`);
     const applied = JSON.parse(utf8.decode(await contract.submit("Firmware:ReportUpdate", {
-      arguments: [gatewayId, "AQ-Sense-3", "2.1.0", fwHash],
+      arguments: [gatewayId, fwModel, "2.1.0", fwHash],
     })));
     console.log(`    rollout attested    : ok=${applied.ok} firmware=${applied.device.firmware_version}`);
     const trojaned = JSON.parse(utf8.decode(await contract.submit("Firmware:ReportUpdate", {
-      arguments: [gatewayId, "AQ-Sense-3", "2.1.0", sha256(Buffer.from("trojan image"))],
+      arguments: [gatewayId, fwModel, "2.1.0", sha256(Buffer.from("trojan image"))],
     })));
     console.log(`    trojaned install    : ok=${trojaned.ok} (${trojaned.reason}) → device status=${trojaned.device.status}`);
     // un-flag for the remaining steps

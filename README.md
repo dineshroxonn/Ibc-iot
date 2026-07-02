@@ -24,6 +24,16 @@ cd chaincode/sensorchain && npm install && npm run build && cd ../../deployment/
 cd app && npm install && node e2e.js --bench   # 9-step lifecycle + throughput benchmark
 ```
 
+Real device ingestion — MQTT fleet → edge gateway agent → live Fabric anchors:
+
+```bash
+node deployment/fabric/app/bridge.js &         # localhost HTTP → Fabric Gateway bridge
+python3 edge/fleet_emulator.py --sensors 60 &  # publishes readings over MQTT
+python3 edge/mqtt_gateway.py                   # windows, signs, anchors; prints CPU/RSS footprint
+```
+
+Measured on this pipeline: 60 sensors, 1,740 readings, 5 anchored batches, 0 errors — at **0.26% CPU and 29.3 MiB peak RSS** on the edge agent (target from the proposal: <2% CPU, <50 MB). Full evidence and the 6-week plan are in [docs/POC_REPORT.md](docs/POC_REPORT.md), including the IIoT mapping of every contract (machine identity, QC calibration records, PLC update governance, supplier SLAs).
+
 `demo.py` runs the entire lifecycle on a simulated Pune shard: 9 devices across 3 vendors are registered with BIS certificates and HSM keypairs, calibrated (one deliberately skipped and auto-flagged), then 30 minutes of AQI / water-quality / traffic readings are batched and Merkle-anchored per minute. Injected faults — a pollution under-reporting sensor, a dead traffic counter under severe AQI, a water sensor going dark — are caught by the anomaly oracle, SLA breaches fire automatically with penalties, and a tampered dashboard value is shown failing its Merkle proof.
 
 ## The six modules
